@@ -17,6 +17,7 @@
   "secret": "",
   "default_mode": "",
   "trusted_domain": [],
+  "tls": {},
   
   // Deprecated
   
