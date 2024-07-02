@@ -144,5 +144,8 @@ func (p *myProviderAdapter) overrideDialerOption(options option.DialerOptions, t
 	if p.outboundOverride.OverrideDialerOptions.FallbackDelay != nil {
 		options.FallbackDelay = *p.outboundOverride.OverrideDialerOptions.FallbackDelay
 	}
+	if p.outboundOverride.OverrideDialerOptions.StoreLastIP != nil {
+		options.StoreLastIP = *p.outboundOverride.OverrideDialerOptions.StoreLastIP
+	}
 	return options
 }
