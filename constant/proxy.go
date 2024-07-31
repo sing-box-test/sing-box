@@ -7,6 +7,8 @@ const (
 	TypeDirect       = "direct"
 	TypeBlock        = "block"
 	TypeDNS          = "dns"
+	TypeDoH          = "doh"
+	TypeDoQ          = "doq"
 	TypeSOCKS        = "socks"
 	TypeHTTP         = "http"
 	TypeMixed        = "mixed"
