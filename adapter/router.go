@@ -101,6 +101,18 @@ type DNSRule interface {
 	ClientSubnet() *netip.Prefix
 	WithAddressLimit() bool
 	MatchAddressLimit(metadata *InboundContext) bool
+	FallbackRules() []FallbackRule
+}
+
+type FallbackRule interface {
+	Start() error
+	Match(metadata *InboundContext) bool
+	String() string
+	AcceptResult() bool
+	Outbound() string
+	DisableCache() bool
+	RewriteTTL() *uint32
+	ClientSubnet() *netip.Prefix
 }
 
 type RuleSet interface {
