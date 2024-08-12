@@ -33,6 +33,8 @@ type RemoteRuleSet struct {
 	lastEtag       string
 	updateTicker   *time.Ticker
 	pauseManager   pause.Manager
+
+	firstStartCancel context.CancelFunc
 }
 
 func NewRemoteRuleSet(ctx context.Context, router adapter.Router, logger logger.ContextLogger, options option.RuleSet) *RemoteRuleSet {
@@ -47,6 +49,7 @@ func NewRemoteRuleSet(ctx context.Context, router adapter.Router, logger logger.
 		abstractRuleSet: abstractRuleSet{
 			ctx:    ctx,
 			tag:    options.Tag,
+			rType:  C.TypeRemote,
 			path:   options.Path,
 			format: options.Format,
 		},
@@ -58,6 +61,18 @@ func NewRemoteRuleSet(ctx context.Context, router adapter.Router, logger logger.
 		lastEtag:       "",
 		pauseManager:   service.FromContext[pause.Manager](ctx),
 	}
+}
+
+func (s *RemoteRuleSet) Update(_ adapter.Router) error {
+	if err := s.fetchOnce(s.ctx, nil); err != nil {
+		return err
+	}
+	if s.firstStartCancel != nil {
+		s.firstStartCancel()
+		s.firstStartCancel = nil
+	}
+	s.updateTicker.Reset(s.updateInterval)
+	return nil
 }
 
 func (s *RemoteRuleSet) StartContext(ctx context.Context, startContext adapter.RuleSetStartContext) error {
@@ -76,7 +91,7 @@ func (s *RemoteRuleSet) StartContext(ctx context.Context, startContext adapter.R
 		dialer = outbound
 	}
 	s.dialer = dialer
-	s.loadFromFile(s.router)
+	s.loadFromFile(s.router, true)
 	if s.lastUpdated.IsZero() {
 		err := s.fetchOnce(ctx, startContext)
 		if err != nil {
@@ -89,16 +104,21 @@ func (s *RemoteRuleSet) StartContext(ctx context.Context, startContext adapter.R
 }
 
 func (s *RemoteRuleSet) loopUpdate() {
-	if time.Since(s.lastUpdated) < s.updateInterval {
-		select {
-		case <-s.ctx.Done():
-			return
-		case <-time.After(time.Until(s.lastUpdated.Add(s.updateInterval))):
-			s.updateTicker.Reset(s.updateInterval)
+	go func() {
+		var ctx context.Context
+		ctx, s.firstStartCancel = context.WithCancel(s.ctx)
+		if time.Since(s.lastUpdated) < s.updateInterval {
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(time.Until(s.lastUpdated.Add(s.updateInterval))):
+				s.updateTicker.Reset(s.updateInterval)
+				s.firstStartCancel = nil
+			}
 		}
-	}
-	s.pauseManager.WaitActive()
-	s.update()
+		s.pauseManager.WaitActive()
+		s.update()
+	}()
 	for {
 		select {
 		case <-s.ctx.Done():

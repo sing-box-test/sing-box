@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/sagernet/sing-box/adapter"
+	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/option"
 )
 
@@ -18,11 +19,16 @@ func NewLocalRuleSet(ctx context.Context, router adapter.Router, options option.
 		abstractRuleSet: abstractRuleSet{
 			ctx:    ctx,
 			tag:    options.Tag,
+			rType:  C.TypeLocal,
 			path:   options.Path,
 			format: options.Format,
 		},
 	}
-	return &ruleSet, ruleSet.loadFromFile(router)
+	return &ruleSet, ruleSet.loadFromFile(router, true)
+}
+
+func (s *LocalRuleSet) Update(router adapter.Router) error {
+	return s.loadFromFile(router, false)
 }
 
 func (s *LocalRuleSet) StartContext(_ context.Context, _ adapter.RuleSetStartContext) error {
